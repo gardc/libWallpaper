@@ -28,9 +28,10 @@ pub fn build(b: *std.Build) void {
     // to our consumers. We must give it a name because a Zig package can expose
     // multiple modules and consumers will need to be able to specify which
     // module they want to access.
-    // Compile Windows C++ code when targeting Windows
-    // Check if we're targeting Windows by checking the resolved target
+    // Compile platform-specific code when targeting specific platforms
+    // Check if we're targeting Windows or macOS by checking the resolved target
     const is_windows = target.result.os.tag == .windows;
+    const is_macos = target.result.os.tag == .macos;
 
     const mod = b.addModule("libWallpaper", .{
         // The root source file is the "entry point" of this module. Users of
@@ -98,6 +99,16 @@ pub fn build(b: *std.Build) void {
         exe.linkLibCpp();
     }
 
+    // Link macOS Objective-C code if targeting macOS
+    else if (is_macos) {
+        exe.addCSourceFile(.{
+            .file = b.path("src/platform/macos/wallpaper_mac.m"),
+            .flags = &.{},
+        });
+        exe.linkFramework("Foundation");
+        exe.linkFramework("AppKit");
+    }
+
     // This declares intent for the executable to be installed into the
     // install prefix when running `zig build` (i.e. when executing the default
     // step). By default the install prefix is `zig-out/` but can be overridden
@@ -148,6 +159,16 @@ pub fn build(b: *std.Build) void {
         mod_tests.linkLibCpp();
     }
 
+    // Link macOS Objective-C code for module tests if targeting macOS
+    else if (is_macos) {
+        // mod_tests.addCSourceFile(.{
+        //     .file = b.path("src/platform/macos/wallpaper_mac.m"),
+        //     .flags = &.{ "-x", "objective-c" },
+        // });
+        mod_tests.linkFramework("Foundation");
+        mod_tests.linkFramework("AppKit");
+    }
+
     // A run step that will run the test executable.
     const run_mod_tests = b.addRunArtifact(mod_tests);
 
@@ -167,6 +188,12 @@ pub fn build(b: *std.Build) void {
         exe_tests.linkSystemLibrary("ole32");
         exe_tests.linkSystemLibrary("shlwapi");
         exe_tests.linkLibCpp();
+    }
+
+    // Link macOS Objective-C code for executable tests if targeting macOS
+    if (is_macos) {
+        exe_tests.linkFramework("Foundation");
+        exe_tests.linkFramework("AppKit");
     }
 
     // A run step that will run the second test executable.

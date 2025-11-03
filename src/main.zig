@@ -6,10 +6,22 @@ pub fn main() !void {
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
 
-    const image_path = "./image.jpg";
+    var args = std.process.args();
+
+    // Get the program name (arg 0) for the usage message.
+    const prog_name = args.next() orelse "set-wallpaper";
+
+    // Get the image path (arg 1).
+    const image_path = args.next() orelse {
+        // Print usage error to stderr
+        std.debug.print("Usage: {s} <path_to_image_file>\n", .{prog_name});
+        // Exit with a non-zero status code to indicate failure
+        std.process.exit(1);
+    };
 
     std.debug.print("Setting wallpaper to: {s}\n", .{image_path});
 
+    // The allocator is still passed to libWallpaper, as in the original code.
     libWallpaper.setWallpaperImage(allocator, image_path, true) catch |err| {
         std.debug.print("Failed to set wallpaper: {}\n", .{err});
         return err;

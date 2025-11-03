@@ -1,25 +1,24 @@
 const std = @import("std");
 const WallpaperError = @import("../../root.zig").WallpaperError;
 
-// External C functions from lib_win.cpp
-extern "c" fn SetWallpaperImage(imagePath: [*c]const u16, stretch: c_int) c_int;
+// External C function from wallpaper_mac.m
+extern "c" fn SetWallpaperImage(imagePath: [*c]const u8, stretch: c_int) c_int;
 
 /// Set a wallpaper image on all monitors.
 ///
 /// Returns an error if the operation failed.
 ///
-/// `image_path` should be a valid Windows path (e.g., "C:\\path\\to\\image.jpg")
+/// `image_path` should be a valid macOS path (e.g., "/path/to/image.jpg")
 /// `stretch` controls whether the image should be stretched to fill the screen (true) or centered (false)
 /// `allocator` is used for temporary string conversion buffers.
 pub fn setWallpaperImage(allocator: std.mem.Allocator, image_path: []const u8, stretch: bool) WallpaperError!void {
-    // Convert to UTF-16 LE with null terminator (utf8ToUtf16LeAllocZ includes null terminator)
-    const wide_path = try std.unicode.utf8ToUtf16LeAllocZ(allocator, image_path);
-    defer allocator.free(wide_path);
+    // Convert to null-terminated C string
+    const c_path = try allocator.dupeZ(u8, image_path);
+    defer allocator.free(c_path);
 
     const stretch_int: c_int = if (stretch) 1 else 0;
-    const result = SetWallpaperImage(wide_path.ptr, stretch_int);
+    const result = SetWallpaperImage(c_path.ptr, stretch_int);
     if (result != 0) {
-        // HRESULT error code
         std.debug.print("Failed to set wallpaper: {}\n", .{result});
         return WallpaperError.SetWallpaperFailed;
     }
