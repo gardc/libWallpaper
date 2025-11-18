@@ -87,6 +87,18 @@ pub fn build(b: *std.Build) void {
             },
         }),
     });
+    const export_lib = b.addLibrary(.{
+        .name = "libWallpaper",
+        .linkage = .dynamic,
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/export.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "libWallpaper", .module = mod },
+            },
+        }),
+    });
 
     // Link Windows C++ code if targeting Windows
     if (is_windows) {
@@ -97,6 +109,14 @@ pub fn build(b: *std.Build) void {
         exe.linkSystemLibrary("ole32");
         exe.linkSystemLibrary("shlwapi");
         exe.linkLibCpp();
+
+        export_lib.addCSourceFile(.{
+            .file = b.path("src/platform/windows/lib_win.cpp"),
+            .flags = &.{"-std=c++17"},
+        });
+        export_lib.linkSystemLibrary("ole32");
+        export_lib.linkSystemLibrary("shlwapi");
+        export_lib.linkLibCpp();
     }
 
     // Link macOS Objective-C code if targeting macOS
@@ -107,6 +127,13 @@ pub fn build(b: *std.Build) void {
         });
         exe.linkFramework("Foundation");
         exe.linkFramework("AppKit");
+
+        export_lib.addCSourceFile(.{
+            .file = b.path("src/platform/macos/wallpaper_mac.m"),
+            .flags = &.{},
+        });
+        export_lib.linkFramework("Foundation");
+        export_lib.linkFramework("AppKit");
     }
 
     // This declares intent for the executable to be installed into the

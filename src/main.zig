@@ -6,7 +6,8 @@ pub fn main() !void {
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
 
-    var args = std.process.args();
+    var args = try std.process.argsWithAllocator(allocator);
+    defer args.deinit();
 
     // Get the program name (arg 0) for the usage message.
     const prog_name = args.next() orelse "set-wallpaper";
